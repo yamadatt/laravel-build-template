@@ -3,7 +3,7 @@
 # PHP-FPMのソケットディレクトリを作成
 mkdir -p /run/php
 
-# Laravelプロジェクトが存在しない場合は作成
+# Laravelプロジェクトが存在しない場合は作成（ECS対応で主に既存プロジェクトを使用）
 if [ ! -d "/var/www/LaravelTestProject" ]; then
     echo "Creating Laravel 11 project..."
     cd /var/www
@@ -31,6 +31,36 @@ if [ ! -d "/var/www/LaravelTestProject" ]; then
     fi
     
     echo "Laravel 11 project created successfully!"
+else
+    echo "Existing Laravel project found!"
+    cd /var/www/LaravelTestProject
+    
+    # 既存プロジェクトの設定確認と必要な場合のみ更新
+    if [ -f "composer.json" ]; then
+        echo "Configuring existing Laravel project..."
+        
+        # .env ファイルがない場合は作成
+        if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+            cp .env.example .env
+        fi
+        
+        # APP_KEYがない場合は生成を試行
+        if ! grep -q "APP_KEY=" .env || grep -q "APP_KEY=$" .env || grep -q "APP_KEY=\"\"" .env; then
+            echo "Generating APP_KEY..."
+            php artisan key:generate --no-interaction --force || echo "Key generation failed, continuing..."
+        fi
+        
+        # Laravel バージョン確認
+        echo "Laravel project version:"
+        php artisan --version || echo "Laravel version check failed, continuing..."
+        
+        # キャッシュクリア（必要に応じて）
+        php artisan config:clear 2>/dev/null || true
+        php artisan route:clear 2>/dev/null || true
+        php artisan view:clear 2>/dev/null || true
+        
+        echo "Existing Laravel project configured successfully!"
+    fi
 fi
 
 # デバッグ用PHPファイルを作成

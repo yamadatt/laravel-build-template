@@ -28,9 +28,14 @@ services:
     # ポートフォワードの指定（ホスト側ポート：コンテナ側ポート）
     ports:
       - 8080:80
-    # ボリュームを設定する（ホスト側ディレクトリ:コンテナ側ボリュームの場所）
-    volumes:
-      - ./src:/var/www
+    # ECS対応：ソースコードはDockerイメージに埋め込み済み（volume不要）
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=db
+      - DB_DATABASE=mysql_test_db
+      - DB_USERNAME=admin
+      - DB_PASSWORD=secret
     # サービスの依存関係を指定（webをdbに依存させる）
     depends_on:
       - db

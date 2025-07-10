@@ -9,16 +9,17 @@ Laravel 11 アプリケーション用のDocker開発環境テンプレートで
 **特徴:**
 - 🚀 nginx + PHP-FPM の統合コンテナ
 - 📦 マルチステージビルドによる軽量イメージ（約300-400MB）
-- 🔧 開発用の自動Laravel プロジェクト作成
+- 🔧 Laravel 9 → 11 への自動アップグレード機能
 - 🐳 Docker Compose による簡単な環境構築
 - ⚡ Laravel 11の新機能をサポート（Health Check、Pest testing framework等）
+- 🎯 ECS対応（srcディレクトリをイメージに埋め込み）
 
 ## 技術スタック
 
-- **PHP**: 8.2-FPM
+- **PHP**: 8.2-FPM (Alpine Linux)
 - **Laravel**: 11.x
 - **MySQL**: 5.7.36
-- **Nginx**: latest
+- **Nginx**: latest (Alpine Linux)
 - **Docker**: Docker Compose with Multi-stage build
 
 ## ディレクトリ構成
@@ -30,11 +31,13 @@ Laravel 11 アプリケーション用のDocker開発環境テンプレートで
 │   │   ├── Dockerfile               # マルチステージビルド設定
 │   │   ├── nginx.conf               # Nginx設定
 │   │   ├── supervisord.conf         # Supervisor設定
-│   │   └── entrypoint.sh            # 初期化スクリプト
+│   │   ├── entrypoint.sh            # 初期化スクリプト
+│   │   ├── composer-laravel11.json  # Laravel 11用composer.json
+│   │   └── bootstrap-app.php        # Laravel 11用bootstrap/app.php
 │   └── php/
 │       └── php.ini                  # PHP設定
 ├── src/                             # アプリケーションコード
-│   └── LaravelTestProject/          # Laravelプロジェクト（自動作成）
+│   └── LaravelTestProject/          # Laravelプロジェクト（Laravel 9→11自動アップグレード）
 ├── .dockerignore                    # Docker build除外設定
 ├── docker-compose.yml               # Docker Compose設定
 └── README.md                        # このファイル
@@ -46,6 +49,7 @@ Laravel 11 アプリケーション用のDocker開発環境テンプレートで
 - **1つのコンテナ**: nginx と PHP-FPM を統合
 - **Supervisor**: プロセス管理でnginxとPHP-FPMを同時実行
 - **TCP通信**: PHP-FPMとnginx間の通信にTCP接続を使用
+- **ECS対応**: srcディレクトリをイメージに埋め込み、外部ボリュームマウント不要
 
 ### マルチステージビルド
 - **Build Stage**: 開発ツールとComposerを使用してビルド
@@ -74,6 +78,9 @@ docker-compose up -d --build
 ```
 
 初回起動時は自動的にLaravelプロジェクトが作成されます。
+
+**Laravel 9 → 11 自動アップグレード:**
+既存のLaravel 9プロジェクトがsrcディレクトリにある場合、自動的にLaravel 11にアップグレードされます。
 
 ### 3. アクセス確認
 
@@ -145,6 +152,41 @@ docker-compose exec web composer install
 docker-compose exec web composer require package-name
 ```
 
+## Laravel 9 → 11 アップグレード詳細
+
+### 自動アップグレード処理
+Dockerビルド時に以下の処理を自動実行：
+
+1. **依存関係の更新**
+   - Laravel 9のcomposer.jsonを11用に置換
+   - vendor/composer.lockを削除
+   - 新しい依存関係のインストール
+
+2. **アプリケーション構造の更新**
+   - Laravel 11用のbootstrap/app.phpを配置
+   - 新しいアプリケーションブートストラップ構造に対応
+
+3. **設定ファイルの調整**
+   - .envファイルの確認・作成
+   - APP_KEYの自動生成
+   - 権限設定の調整
+
+### 手動アップグレード（必要に応じて）
+```bash
+# コンテナ内で実行
+docker-compose exec web bash
+
+cd /var/www/LaravelTestProject
+
+# 設定ファイルの更新
+php artisan config:cache --env=production
+php artisan route:cache
+php artisan view:cache
+
+# データベースマイグレーション
+php artisan migrate --force
+```
+
 ### テスト実行
 ```bash
 # PHPUnit (従来)
@@ -195,6 +237,131 @@ docker-compose exec web vendor/bin/pest --init
 
 # テスト実行
 docker-compose exec web vendor/bin/pest
+```
+
+## ECS (Amazon Elastic Container Service) 対応
+
+このプロジェクトはECSでの本番運用に最適化されています。
+
+### ECS対応の特徴
+
+#### 1. コンテナ化されたソースコード
+- **埋め込み式**: ソースコードはDockerイメージに埋め込まれており、外部Volumeに依存しません
+- **Laravel 9 → 11 自動アップグレード**: 既存のLaravel 9プロジェクトを自動的に11にアップグレード
+- **不変性**: イメージのバージョン管理により、どの環境でも同じコードが実行されます
+- **高速起動**: Volumeマウントが不要なため、コンテナの起動が高速です
+
+#### 2. 本番環境用設定
+- **Alpine Linux**: 軽量なベースイメージで高速デプロイ
+- **マルチステージビルド**: 本番環境では不要なツールを除外
+- **セキュリティ**: 最小限の依存関係とシステムパッケージ
+- **最適化されたComposer**: 本番環境用の依存関係のみインストール
+
+#### 3. Laravel 11 自動アップグレード機能
+- **ビルド時アップグレード**: Laravel 9プロジェクトを11に自動変換
+- **依存関係の更新**: composer.jsonを11用に自動置換
+- **設定ファイルの生成**: bootstrap/app.phpなどの必要ファイルを自動配置
+- **互換性の確保**: 既存のコードベースを保持しながらフレームワークを更新
+
+#### 4. 環境変数対応
+```bash
+# ECS用の環境変数設定例
+APP_ENV=production
+APP_DEBUG=false
+DB_HOST=your-rds-endpoint.amazonaws.com
+DB_DATABASE=your_production_db
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+```
+
+### ECS デプロイ手順
+
+#### 1. ECR（Amazon Elastic Container Registry）への登録
+
+```bash
+# ECRリポジトリの作成
+aws ecr create-repository --repository-name laravel11-app --region ap-northeast-1
+
+# Docker認証
+aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com
+
+# イメージのビルド
+docker build -t laravel11-app .
+
+# タグ付け
+docker tag laravel11-app:latest <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/laravel11-app:latest
+
+# プッシュ
+docker push <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/laravel11-app:latest
+```
+
+#### 2. ECS タスク定義例
+
+```json
+{
+  "family": "laravel11-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::account-id:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "laravel11-app",
+      "image": "<account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/laravel11-app:latest",
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "APP_ENV",
+          "value": "production"
+        },
+        {
+          "name": "APP_DEBUG",
+          "value": "false"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/laravel11-app",
+          "awslogs-region": "ap-northeast-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
+```
+
+#### 3. 本番環境の注意点
+
+- **RDS使用**: MySQLは別途RDSを使用
+- **セッション管理**: Redis等を使用（デフォルトのファイル保存は不適切）
+- **ログ管理**: CloudWatch Logsを使用
+- **環境変数**: AWS Systems Manager Parameter Storeまたは Secrets Manager を使用
+
+### ローカル環境での ECS 相当テスト
+
+```bash
+# 本番環境相当での動作確認
+docker build -t laravel11-app-production .
+docker run -d -p 8080:80 \
+  -e APP_ENV=production \
+  -e APP_DEBUG=false \
+  --name laravel11-production \
+  laravel11-app-production
+
+# 動作確認
+curl http://localhost:8080
+
+# コンテナの削除
+docker stop laravel11-production
+docker rm laravel11-production
 ```
 
 ## ログとデバッグ
@@ -418,10 +585,25 @@ A: 主な変更点：
 - WebSocket サポート（Reverb）
 - Pest テストフレームワーク推奨
 
+### Q: 既存のLaravel 9プロジェクトはどうなりますか？
+A: 自動的にLaravel 11にアップグレードされます：
+- composer.jsonが11用に置換されます
+- 必要なファイル（bootstrap/app.php等）が自動配置されます
+- 既存のコードベースは保持されます
+
+### Q: ECSでの本番運用で注意すべき点は？
+A: 以下の点を確認してください：
+- 環境変数の設定（APP_ENV=production等）
+- RDSなどの外部データベースとの接続
+- ロードバランサーの設定
+- ログの適切な管理
+
 ## 更新履歴
 
 ### v3.0.0
 - Laravel 11 対応
+- Laravel 9 → 11 自動アップグレード機能
+- ECS本番運用対応（srcディレクトリ埋め込み）
 - Health Check 機能の追加
 - Reverb (WebSocket) サーバー対応
 - Pest Testing Framework サポート
