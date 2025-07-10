@@ -1,21 +1,22 @@
-# Laravel 9 Docker Development Environment
+# Laravel 11 Docker Development Environment
 
-Laravel 9 アプリケーション用のDocker開発環境テンプレートです。
+Laravel 11 アプリケーション用のDocker開発環境テンプレートです。
 
 ## 概要
 
-このプロジェクトは、Laravel 9 アプリケーションを Docker で簡単に開発できる環境を提供します。PHP 8.2、MySQL 5.7、Nginx を使用した完全な開発スタックが含まれています。
+このプロジェクトは、Laravel 11 アプリケーションを Docker で簡単に開発できる環境を提供します。PHP 8.2、MySQL 5.7、Nginx を使用した完全な開発スタックが含まれています。
 
 **特徴:**
 - 🚀 nginx + PHP-FPM の統合コンテナ
 - 📦 マルチステージビルドによる軽量イメージ（約300-400MB）
 - 🔧 開発用の自動Laravel プロジェクト作成
 - 🐳 Docker Compose による簡単な環境構築
+- ⚡ Laravel 11の新機能をサポート（Health Check、Pest testing framework等）
 
 ## 技術スタック
 
 - **PHP**: 8.2-FPM
-- **Laravel**: 9.x
+- **Laravel**: 11.x
 - **MySQL**: 5.7.36
 - **Nginx**: latest
 - **Docker**: Docker Compose with Multi-stage build
@@ -63,7 +64,7 @@ Laravel 9 アプリケーション用のDocker開発環境テンプレートで�
 ```bash
 # リポジトリのクローン
 git clone <repository-url>
-cd laravel9-build-template
+cd laravel11-build-template
 
 # Docker環境の起動（初回ビルド）
 docker-compose up --build
@@ -128,6 +129,11 @@ docker-compose exec web php artisan <command>
 docker-compose exec web php artisan make:controller UserController
 docker-compose exec web php artisan migrate
 docker-compose exec web php artisan tinker
+
+# Laravel 11 新機能
+docker-compose exec web php artisan about
+docker-compose exec web php artisan health:check
+docker-compose exec web php artisan reverb:start
 ```
 
 ### Composer コマンド
@@ -141,9 +147,12 @@ docker-compose exec web composer require package-name
 
 ### テスト実行
 ```bash
+# PHPUnit (従来)
 docker-compose exec web php artisan test
-# または
 docker-compose exec web vendor/bin/phpunit
+
+# Pest (Laravel 11 推奨)
+docker-compose exec web vendor/bin/pest
 ```
 
 ### プロセス管理
@@ -154,6 +163,38 @@ docker-compose exec web supervisorctl status
 # プロセスの再起動
 docker-compose exec web supervisorctl restart nginx
 docker-compose exec web supervisorctl restart php-fpm
+```
+
+## Laravel 11 新機能
+
+### Health Check
+```bash
+# ヘルスチェック実行
+docker-compose exec web php artisan health:check
+
+# カスタムヘルスチェック作成
+docker-compose exec web php artisan make:health-check DatabaseHealthCheck
+```
+
+### Reverb (WebSocket サーバー)
+```bash
+# Reverb サーバー起動
+docker-compose exec web php artisan reverb:start
+
+# Reverb 設定
+docker-compose exec web php artisan reverb:install
+```
+
+### Pest Testing Framework
+```bash
+# Pest のインストール
+docker-compose exec web composer require pestphp/pest --dev
+
+# Pest の初期化
+docker-compose exec web vendor/bin/pest --init
+
+# テスト実行
+docker-compose exec web vendor/bin/pest
 ```
 
 ## ログとデバッグ
@@ -190,7 +231,7 @@ docker-compose exec web tail -f /var/log/supervisor/supervisord.log
 docker-compose ps
 
 # イメージサイズ確認
-docker images laravel9-build-template_web
+docker images laravel11-build-template_web
 
 # nginx設定テスト
 docker-compose exec web nginx -t
@@ -237,10 +278,10 @@ docker-compose up -d
 ### イメージサイズの確認
 ```bash
 # ビルド前後のサイズ比較
-docker images | grep laravel9-build-template
+docker images | grep laravel11-build-template
 
 # レイヤー分析
-docker history laravel9-build-template_web
+docker history laravel11-build-template_web
 ```
 
 ### データベースのリセット
@@ -364,7 +405,27 @@ ports:
 ### Q: 開発用のパッケージを追加したい
 A: `docker/nginx-php/Dockerfile`のBuild Stageに追加してください。
 
+### Q: Laravel 11 の新機能を使用するには？
+A: 以下のコマンドで新機能を利用できます：
+- Health Check: `php artisan health:check`
+- Reverb: `php artisan reverb:start`
+- Pest: `vendor/bin/pest`
+
+### Q: Laravel 9 から Laravel 11 への移行は？
+A: 主な変更点：
+- 最小 PHP バージョンが 8.2 になりました
+- 新しい健全性チェック機能
+- WebSocket サポート（Reverb）
+- Pest テストフレームワーク推奨
+
 ## 更新履歴
+
+### v3.0.0
+- Laravel 11 対応
+- Health Check 機能の追加
+- Reverb (WebSocket) サーバー対応
+- Pest Testing Framework サポート
+- 新しい Artisan コマンドの対応
 
 ### v2.0.0
 - nginx + PHP-FPM 統合コンテナ化

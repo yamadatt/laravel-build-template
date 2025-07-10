@@ -22,8 +22,9 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 ENV COMPOSER_HOME /composer
 ENV PATH $PATH:/composer/vendor/bin
 
-# Laravel Package install
-RUN composer global require "laravel/installer"
+# Laravel Package install (最新バージョン)
+RUN composer global require "laravel/installer" --no-interaction \
+    && composer global update --no-interaction
 
 # ===== Production Stage =====
 FROM php:8.2-fpm
