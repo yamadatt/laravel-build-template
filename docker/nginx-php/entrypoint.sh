@@ -7,6 +7,11 @@ mkdir -p /var/run/php
 if [ ! -d "/var/www/LaravelTestProject" ]; then
     echo "Creating Laravel project..."
     cd /var/www
+    # Laravel installerが必要な場合のみインストール
+    if ! command -v laravel &> /dev/null; then
+        echo "Installing Laravel installer..."
+        composer global require "laravel/installer"
+    fi
     laravel new LaravelTestProject
     echo "Laravel project created successfully!"
 fi

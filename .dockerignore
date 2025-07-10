@@ -1,0 +1,33 @@
+# Git files
+.git
+.gitignore
+
+# Node modules
+node_modules
+npm-debug.log
+
+# Laravel specific
+src/LaravelTestProject/vendor
+src/LaravelTestProject/node_modules
+src/LaravelTestProject/storage/logs/*
+src/LaravelTestProject/storage/framework/cache/*
+src/LaravelTestProject/storage/framework/sessions/*
+src/LaravelTestProject/storage/framework/views/*
+src/LaravelTestProject/.env
+
+# Documentation
+README.md
+*.md
+
+# IDE files
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
